@@ -1,0 +1,129 @@
+declare upper;
+
+input showPM = yes;
+input showYDay = yes;
+input show4HLiquidity = yes;
+input showPrevWeek = yes;
+input showLineLabels = yes;
+
+input premarketStart = 0400;
+input regularOpen = 0930;
+input swingBars = 3;
+input labelOffset = 250;
+
+DefineGlobalColor("PM", Color.PINK);
+DefineGlobalColor("YDAY", Color.LIGHT_GRAY);
+DefineGlobalColor("LIQ4H", Color.CYAN);
+DefineGlobalColor("PWEEK", Color.GRAY);
+
+def agg = GetAggregationPeriod();
+def showStudy = agg <= AggregationPeriod.FOUR_HOURS;
+def lastBN = HighestAll(BarNumber());
+def labelBar = BarNumber() == lastBN - labelOffset;
+def newDay = GetYYYYMMDD() != GetYYYYMMDD()[1];
+
+def inPM =
+    SecondsFromTime(premarketStart) >= 0 and
+    SecondsTillTime(regularOpen) > 0;
+
+def pmHighLive =
+    if newDay then
+        if inPM then high else Double.NaN
+    else if inPM then
+        Max(if IsNaN(pmHighLive[1]) then high else pmHighLive[1], high)
+    else pmHighLive[1];
+
+def pmLowLive =
+    if newDay then
+        if inPM then low else Double.NaN
+    else if inPM then
+        Min(if IsNaN(pmLowLive[1]) then low else pmLowLive[1], low)
+    else pmLowLive[1];
+
+def lastBar = !IsNaN(close) and IsNaN(close[-1]);
+
+def PMHval = HighestAll(if lastBar then pmHighLive else Double.NaN);
+def PMLval = HighestAll(if lastBar then pmLowLive else Double.NaN);
+
+def YHval = HighestAll(if lastBar then high(period = AggregationPeriod.DAY)[1] else Double.NaN);
+def YLval = HighestAll(if lastBar then low(period = AggregationPeriod.DAY)[1] else Double.NaN);
+
+def PWHval = HighestAll(if lastBar then high(period = AggregationPeriod.WEEK)[1] else Double.NaN);
+def PWLval = HighestAll(if lastBar then low(period = AggregationPeriod.WEEK)[1] else Double.NaN);
+
+def h4 = high(period = AggregationPeriod.FOUR_HOURS);
+def l4 = low(period = AggregationPeriod.FOUR_HOURS);
+
+def is4HSwingHigh =
+    h4[swingBars] == Highest(h4, swingBars * 2 + 1)[swingBars];
+
+def is4HSwingLow =
+    l4[swingBars] == Lowest(l4, swingBars * 2 + 1)[swingBars];
+
+def raw4HHigh =
+    if is4HSwingHigh then h4[swingBars]
+    else raw4HHigh[1];
+
+def raw4HLow =
+    if is4HSwingLow then l4[swingBars]
+    else raw4HLow[1];
+
+def LiqHval = HighestAll(if lastBar then raw4HHigh else Double.NaN);
+def LiqLval = HighestAll(if lastBar then raw4HLow else Double.NaN);
+
+plot PMH = if showStudy and showPM and !IsNaN(PMHval) then PMHval else Double.NaN;
+PMH.SetDefaultColor(GlobalColor("PM"));
+PMH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+PMH.SetLineWeight(2);
+
+plot PML = if showStudy and showPM and !IsNaN(PMLval) then PMLval else Double.NaN;
+PML.SetDefaultColor(GlobalColor("PM"));
+PML.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+PML.SetLineWeight(2);
+
+plot YH = if showStudy and showYDay and !IsNaN(YHval) then YHval else Double.NaN;
+YH.SetDefaultColor(GlobalColor("YDAY"));
+YH.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+YH.SetLineWeight(2);
+
+plot YL = if showStudy and showYDay and !IsNaN(YLval) then YLval else Double.NaN;
+YL.SetDefaultColor(GlobalColor("YDAY"));
+YL.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+YL.SetLineWeight(2);
+
+plot Liq4HHigh = if showStudy and show4HLiquidity and !IsNaN(LiqHval) then LiqHval else Double.NaN;
+Liq4HHigh.SetDefaultColor(GlobalColor("LIQ4H"));
+Liq4HHigh.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+Liq4HHigh.SetLineWeight(2);
+
+plot Liq4HLow = if showStudy and show4HLiquidity and !IsNaN(LiqLval) then LiqLval else Double.NaN;
+Liq4HLow.SetDefaultColor(GlobalColor("LIQ4H"));
+Liq4HLow.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+Liq4HLow.SetLineWeight(2);
+
+plot PrevWeekHigh = if showStudy and showPrevWeek and !IsNaN(PWHval) then PWHval else Double.NaN;
+PrevWeekHigh.SetDefaultColor(GlobalColor("PWEEK"));
+PrevWeekHigh.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+PrevWeekHigh.SetLineWeight(2);
+
+plot PrevWeekLow = if showStudy and showPrevWeek and !IsNaN(PWLval) then PWLval else Double.NaN;
+PrevWeekLow.SetDefaultColor(GlobalColor("PWEEK"));
+PrevWeekLow.SetPaintingStrategy(PaintingStrategy.HORIZONTAL);
+PrevWeekLow.SetLineWeight(2);
+
+AddChartBubble(showLineLabels and labelBar and !IsNaN(PMH), PMH, "PMH", GlobalColor("PM"), yes);
+AddChartBubble(showLineLabels and labelBar and !IsNaN(PML), PML, "PML", GlobalColor("PM"), no);
+
+AddChartBubble(showLineLabels and labelBar and !IsNaN(YH), YH, "YH", GlobalColor("YDAY"), yes);
+AddChartBubble(showLineLabels and labelBar and !IsNaN(YL), YL, "YL", GlobalColor("YDAY"), no);
+
+AddChartBubble(showLineLabels and labelBar and !IsNaN(Liq4HHigh), Liq4HHigh, "4HH", GlobalColor("LIQ4H"), yes);
+AddChartBubble(showLineLabels and labelBar and !IsNaN(Liq4HLow), Liq4HLow, "4HL", GlobalColor("LIQ4H"), no);
+
+AddChartBubble(showLineLabels and labelBar and !IsNaN(PrevWeekHigh), PrevWeekHigh, "PWH", GlobalColor("PWEEK"), yes);
+AddChartBubble(showLineLabels and labelBar and !IsNaN(PrevWeekLow), PrevWeekLow, "PWL", GlobalColor("PWEEK"), no);
+
+AddLabel(yes, "PM", Color.PINK);
+AddLabel(yes, "YDAY", Color.LIGHT_GRAY);
+AddLabel(yes, "4H", Color.CYAN);
+AddLabel(yes, "WEEK", Color.GRAY);
