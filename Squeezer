@@ -1,0 +1,103 @@
+declare upper;
+
+input length = 20;
+input bbMult = 2.0;
+input kcMult = 1.5;
+
+script KCValues {
+    input agg = AggregationPeriod.FIVE_MIN;
+    input length = 20;
+    input kcMult = 1.5;
+
+    def c = close(period = agg);
+    def h = high(period = agg);
+    def l = low(period = agg);
+
+    def basis = Average(c, length);
+    def atr = Average(TrueRange(h, c, l), length);
+
+    plot Upper = basis + kcMult * atr;
+    plot Lower = basis - kcMult * atr;
+}
+
+script SqueezeOn {
+    input agg = AggregationPeriod.FIVE_MIN;
+    input length = 20;
+    input bbMult = 2.0;
+    input kcMult = 1.5;
+
+    def c = close(period = agg);
+    def h = high(period = agg);
+    def l = low(period = agg);
+
+    def basis = Average(c, length);
+
+    def bbUpper = basis + bbMult * StDev(c, length);
+    def bbLower = basis - bbMult * StDev(c, length);
+
+    def atr = Average(TrueRange(h, c, l), length);
+
+    def kcUpper = basis + kcMult * atr;
+    def kcLower = basis - kcMult * atr;
+
+    plot squeeze = bbUpper < kcUpper and bbLower > kcLower;
+}
+
+def chartAgg = GetAggregationPeriod();
+
+# Only show timeframes >= current chart timeframe
+def show5  = chartAgg <= AggregationPeriod.FIVE_MIN;
+def show15 = chartAgg <= AggregationPeriod.FIFTEEN_MIN;
+def show30 = chartAgg <= AggregationPeriod.THIRTY_MIN;
+def show1H = chartAgg <= AggregationPeriod.HOUR;
+def show4H = chartAgg <= AggregationPeriod.FOUR_HOURS;
+
+# 5m
+def sq5 = SqueezeOn(AggregationPeriod.FIVE_MIN, length, bbMult, kcMult);
+def up5 = KCValues(AggregationPeriod.FIVE_MIN, length, kcMult).Upper;
+def lo5 = KCValues(AggregationPeriod.FIVE_MIN, length, kcMult).Lower;
+
+# 15m
+def sq15 = SqueezeOn(AggregationPeriod.FIFTEEN_MIN, length, bbMult, kcMult);
+def up15 = KCValues(AggregationPeriod.FIFTEEN_MIN, length, kcMult).Upper;
+def lo15 = KCValues(AggregationPeriod.FIFTEEN_MIN, length, kcMult).Lower;
+
+# 30m
+def sq30 = SqueezeOn(AggregationPeriod.THIRTY_MIN, length, bbMult, kcMult);
+def up30 = KCValues(AggregationPeriod.THIRTY_MIN, length, kcMult).Upper;
+def lo30 = KCValues(AggregationPeriod.THIRTY_MIN, length, kcMult).Lower;
+
+# 1H
+def sq1H = SqueezeOn(AggregationPeriod.HOUR, length, bbMult, kcMult);
+def up1H = KCValues(AggregationPeriod.HOUR, length, kcMult).Upper;
+def lo1H = KCValues(AggregationPeriod.HOUR, length, kcMult).Lower;
+
+# 4H
+def sq4H = SqueezeOn(AggregationPeriod.FOUR_HOURS, length, bbMult, kcMult);
+def up4H = KCValues(AggregationPeriod.FOUR_HOURS, length, kcMult).Upper;
+def lo4H = KCValues(AggregationPeriod.FOUR_HOURS, length, kcMult).Lower;
+
+AddLabel(show5,
+    if sq5 then "5m SQZ " + Round(lo5, 2) + "-" + Round(up5, 2)
+    else "5m OFF",
+    if sq5 then Color.RED else Color.GREEN);
+
+AddLabel(show15,
+    if sq15 then "15m SQZ " + Round(lo15, 2) + "-" + Round(up15, 2)
+    else "15m OFF",
+    if sq15 then Color.RED else Color.GREEN);
+
+AddLabel(show30,
+    if sq30 then "30m SQZ " + Round(lo30, 2) + "-" + Round(up30, 2)
+    else "30m OFF",
+    if sq30 then Color.RED else Color.GREEN);
+
+AddLabel(show1H,
+    if sq1H then "1H SQZ " + Round(lo1H, 2) + "-" + Round(up1H, 2)
+    else "1H OFF",
+    if sq1H then Color.RED else Color.GREEN);
+
+AddLabel(show4H,
+    if sq4H then "4H SQZ " + Round(lo4H, 2) + "-" + Round(up4H, 2)
+    else "4H OFF",
+    if sq4H then Color.RED else Color.GREEN);
